@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 )
 
 const htmlData = `
@@ -70,5 +71,38 @@ func TestFindByClassDuplicates(t *testing.T) {
 
 	if len(set) != 1 {
 		t.Errorf("Expected 1 node but found %d", len(set))
+	}
+}
+
+func TestFirstByTag(t *testing.T) {
+	node, _ := html.Parse(strings.NewReader(htmlData))
+	root := Set{node}
+	set := root.
+		First(ByTag(atom.Div))
+
+	if len(set) != 1 {
+		t.Errorf("Expected 1 node but found %d", len(set))
+	}
+
+	if set.Attr("class") != "container" {
+		t.Errorf("Expected \"container\" but found %s", set.Attr("class"))
+	}
+}
+
+func TestFirstByClassNext(t *testing.T) {
+	node, _ := html.Parse(strings.NewReader(htmlData))
+	root := Set{node}
+	set := root.
+		First(ByClass("list")).
+		First().
+		Next()
+
+	if set.Text() != "Second value" {
+		t.Errorf("Expected \"Second value\" but found \"%s\"", set.Text())
+	}
+
+	set = set.Prev()
+	if set.Text() != "First value" {
+		t.Errorf("Expected \"First value\" but found \"%s\"", set.Text())
 	}
 }

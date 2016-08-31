@@ -81,6 +81,61 @@ func (s Set) Filter(selectors ...Selector) Set {
 	return matched
 }
 
+// First gets the first descending ElementNode of the elements in the Set that matches the Selectors.
+func (s Set) First(selectors ...Selector) Set {
+	for _, node := range s {
+		for c := node.FirstChild; c != nil; c = c.NextSibling {
+			if m := first(c, selectors); m != nil {
+				return Set{m}
+			}
+		}
+	}
+
+	return nil
+}
+
+// Eq gets a reduced Set with only the elements at the specified index.
+// If the idx is out of bounds, the Set will be empty.
+func (s Set) Eq(idx int) Set {
+	if idx < 0 || idx >= len(s) {
+		return nil
+	}
+
+	return Set{s[idx]}
+}
+
+// Next gets the immediately following sibling of each element in the Set, filtered by the Selectors.
+func (s Set) Next(selectors ...Selector) Set {
+	matched := make(Set, 0, len(s))
+
+	for _, n := range s {
+		for c := n.NextSibling; c != nil; c = c.NextSibling {
+			if c.Type == html.ElementNode && match(c, selectors) {
+				appendNode(&matched, c)
+				break
+			}
+		}
+	}
+
+	return matched
+}
+
+// Prev gets the immediately preceding sibling of each element in the Set, filtered by the Selectors.
+func (s Set) Prev(selectors ...Selector) Set {
+	matched := make(Set, 0, len(s))
+
+	for _, n := range s {
+		for c := n.PrevSibling; c != nil; c = c.PrevSibling {
+			if c.Type == html.ElementNode && match(c, selectors) {
+				appendNode(&matched, c)
+				break
+			}
+		}
+	}
+
+	return matched
+}
+
 // ByTag returns a Selector which matches all nodes of the provided tag type.
 func ByTag(a atom.Atom) Selector {
 	return func(node *html.Node) bool {
@@ -103,6 +158,13 @@ func ByClass(class string) Selector {
 			}
 		}
 		return false
+	}
+}
+
+// ByType returns a Selector which matches all nodes of the provided NodeType.
+func ByType(nodeType html.NodeType) Selector {
+	return func(node *html.Node) bool {
+		return node.Type == nodeType
 	}
 }
 
@@ -164,6 +226,22 @@ func find(s *Set, n *html.Node, selectors []Selector, nested bool) {
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		find(s, c, selectors, nested)
 	}
+}
+
+// first traverses the node tree and returns the first matching descending ElementNode to the Set.
+// If nested is true, the function will continue to search subnodes on matched nodes.
+func first(n *html.Node, selectors []Selector) *html.Node {
+	if n.Type == html.ElementNode && match(n, selectors) {
+		return n
+	}
+
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		if m := first(c, selectors); m != nil {
+			return m
+		}
+	}
+
+	return nil
 }
 
 // appendNode adds the node to the Set unless it already exists.
