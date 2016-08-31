@@ -11,6 +11,8 @@ type Nodes []*html.Node
 
 type Selector func(*html.Node) bool
 
+// Find gets the descendants of each element in the current set of matched elements, filtered by Selectors.
+// After discovering a match, it will not attempt finding matches among the descendants of that node.
 func (n Nodes) Find(selectors ...Selector) Nodes {
 	matched := Nodes{}
 
@@ -23,6 +25,8 @@ func (n Nodes) Find(selectors ...Selector) Nodes {
 	return matched
 }
 
+// Find gets the descendants of each element in the current set of matched elements, filtered by Selectors.
+// After discovering a match, it will continue to search for matches among the descendants of that node.
 func (n Nodes) FindAll(selectors ...Selector) Nodes {
 	matched := Nodes{}
 
@@ -35,6 +39,7 @@ func (n Nodes) FindAll(selectors ...Selector) Nodes {
 	return matched
 }
 
+// Children gets the children of each element in the set of matched element, optionally filtered by Selectors.
 func (n Nodes) Children(selectors ...Selector) Nodes {
 	var matched Nodes
 
@@ -49,30 +54,48 @@ func (n Nodes) Children(selectors ...Selector) Nodes {
 	return matched
 }
 
-// ByTag returns a Selector which selects all nodes of the provided tag type.
+// Filter reduces the set of matched elements to those that match the Selectors.
+func (n Nodes) Filter(selectors ...Selector) Nodes {
+	var matched Nodes
+
+	for _, node := range n {
+		if match(node, selectors) {
+			matched = append(matched, node)
+		}
+	}
+
+	return matched
+}
+
+// ByTag returns a Selector which matches all nodes of the provided tag type.
 func ByTag(a atom.Atom) Selector {
 	return func(node *html.Node) bool {
 		return node.DataAtom == a
 	}
 }
 
-// ById returns a Selector which selects all nodes with the provided id.
+// ById returns a Selector which matches all nodes with the provided id.
 func ById(id string) Selector {
-	return func(node *html.Node) bool {
-		return attr(node, "id") == id
-	}
+	return ByAttr("id", id)
 }
 
-// ByClass returns a Selector which selects all nodes with the provided class.
+// ByClass returns a Selector which matches all nodes with the provided class.
 func ByClass(class string) Selector {
 	return func(node *html.Node) bool {
-		cls := strings.Fields(attr(node, "class"))
+		cls := strings.Fields(getAttr(node, "class"))
 		for _, cl := range cls {
 			if cl == class {
 				return true
 			}
 		}
 		return false
+	}
+}
+
+// ByAttr returns a Selector which matches all nodes with the provided attribute equal to the provided value.
+func ByAttr(attr, value string) Selector {
+	return func(node *html.Node) bool {
+		return getAttr(node, attr) == value
 	}
 }
 
@@ -99,7 +122,7 @@ func match(node *html.Node, selectors []Selector) bool {
 	return false
 }
 
-func attr(node *html.Node, key string) string {
+func getAttr(node *html.Node, key string) string {
 	for _, a := range node.Attr {
 		if a.Key == key {
 			return a.Val
