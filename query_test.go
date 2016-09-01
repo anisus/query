@@ -13,14 +13,14 @@ const htmlData = `
 <html>
 	<body>
 		<div class="container">
-			<li class="list">
-				<ul><strong>First</strong> value</ul>
-				<ul>Second value</ul>
-			</li>
+			<ul class="list">
+				<li><strong>First</strong> value</li>
+				<li>Second value</li>
+			</ul>
 		</div>
 		<span class="foo">Span
-			<div class="foo">Div
-				<div class="bar">Bar</div>
+			<div class="foo moo" id="divId">Div
+				<div class="bar" title="text">Bar</div>
 			</div>
 		</span>
 	</body>
@@ -35,16 +35,16 @@ type HtmlNodes struct {
 	Text1               *html.Node
 	Div                 *html.Node
 	DivText1            *html.Node
-	DivLi               *html.Node
-	DivLiText1          *html.Node
-	DivLiUl1            *html.Node
-	DivLiUl1Strong      *html.Node
-	DivLiUl1StrongText1 *html.Node
-	DivLiUl1Text1       *html.Node
-	DivLiText2          *html.Node
-	DivLiUl2            *html.Node
-	DivLiUl2Text1       *html.Node
-	DivLiText3          *html.Node
+	DivUl               *html.Node
+	DivUlText1          *html.Node
+	DivUlLi1            *html.Node
+	DivUlLi1Strong      *html.Node
+	DivUlLi1StrongText1 *html.Node
+	DivUlLi1Text1       *html.Node
+	DivUlText2          *html.Node
+	DivUlLi2            *html.Node
+	DivUlLi2Text1       *html.Node
+	DivUlText3          *html.Node
 	DivText2            *html.Node
 	Text2               *html.Node
 	Span                *html.Node
@@ -63,83 +63,146 @@ func TestFindByClass(t *testing.T) {
 	assertNodes(t,
 		Set{nodes.Body}.Find(ByClass("container")),
 		nodes.Div)
+	assertNodes(t,
+		Set{nodes.Body}.Find(ByClass("foo")),
+		nodes.Span, nodes.SpanDiv)
+}
+
+func TestFindShallow(t *testing.T) {
+	nodes := htmlNodes()
+	assertNodes(t,
+		Set{nodes.Body}.FindShallow(ByClass("foo")),
+		nodes.Span)
 }
 
 func TestChildren(t *testing.T) {
 	nodes := htmlNodes()
 	assertNodes(t,
-		Set{nodes.DivLi}.Children(),
-		nodes.DivLiUl1, nodes.DivLiUl1)
+		Set{nodes.DivUl}.Children(),
+		nodes.DivUlLi1, nodes.DivUlLi2)
 }
 
-func TestFindByClassChildrenText(t *testing.T) {
-	node, _ := html.Parse(strings.NewReader(htmlData))
-	root := Set{node}
-	str := root.
-		Find(ByClass("list")).
-		Children().
-		Text()
-
-	if str != "First valueSecond value" {
-		t.Errorf("Expected \"First valueSecond value\" but found \"%s\"", str)
-	}
+func TestText(t *testing.T) {
+	nodes := htmlNodes()
+	assertString(t,
+		Set{nodes.DivUlLi1, nodes.DivUlLi2}.Text(),
+		"First valueSecond value")
 }
 
-func TestFindByClassContents(t *testing.T) {
-	node, _ := html.Parse(strings.NewReader(htmlData))
-	root := Set{node}
-	set := root.
-		Find(ByClass("container")).
-		Contents()
-
-	if len(set) != 3 {
-		t.Errorf("Expected 3 nodes but found %d", len(set))
-	}
+func TestAttr(t *testing.T) {
+	nodes := htmlNodes()
+	set := Set{nodes.SpanDiv, nodes.SpanDivDiv}
+	assertString(t,
+		set.Attr("class"),
+		"foo moo")
+	assertString(t,
+		set.Attr(""),
+		"")
+	assertString(t,
+		set.Attr("href"),
+		"")
+	assertString(t,
+		Set{}.Attr("class"),
+		"")
 }
 
-func TestFindByClassDuplicates(t *testing.T) {
-	node, _ := html.Parse(strings.NewReader(htmlData))
-	root := Set{node}
-	set := root.
-		Find(ByClass("foo")).
-		Find(ByClass("bar"))
-
-	if len(set) != 1 {
-		t.Errorf("Expected 1 node but found %d", len(set))
-	}
+func TestEq(t *testing.T) {
+	nodes := htmlNodes()
+	set := Set{nodes.DivUlLi1, nodes.DivUlLi2}
+	assertNodes(t,
+		set.Eq(-1))
+	assertNodes(t,
+		set.Eq(0),
+		nodes.DivUlLi1)
+	assertNodes(t,
+		set.Eq(1),
+		nodes.DivUlLi2)
+	assertNodes(t,
+		set.Eq(2))
 }
 
-func TestFirstByTag(t *testing.T) {
-	node, _ := html.Parse(strings.NewReader(htmlData))
-	root := Set{node}
-	set := root.
-		First(ByTag(atom.Div))
-
-	if len(set) != 1 {
-		t.Errorf("Expected 1 node but found %d", len(set))
-	}
-
-	if set.Attr("class") != "container" {
-		t.Errorf("Expected \"container\" but found %s", set.Attr("class"))
-	}
+func TestContents(t *testing.T) {
+	nodes := htmlNodes()
+	assertNodes(t,
+		Set{nodes.Div}.Contents(),
+		nodes.DivText1, nodes.DivUl, nodes.DivText2)
 }
 
-func TestFirstByClassNext(t *testing.T) {
-	node, _ := html.Parse(strings.NewReader(htmlData))
-	root := Set{node}
-	set := root.
-		First(ByClass("list")).
-		First().
-		Next()
+// TestFindDuplicates tests that even if a Find will match the same element twice
+// only a single instance will be found in the resulting Set
+func TestFindDuplicates(t *testing.T) {
+	nodes := htmlNodes()
+	assertNodes(t,
+		Set{nodes.Span, nodes.SpanDiv}.Find(ByClass("bar")),
+		nodes.SpanDivDiv)
+}
 
-	if set.Text() != "Second value" {
-		t.Errorf("Expected \"Second value\" but found \"%s\"", set.Text())
+func TestFirst(t *testing.T) {
+	nodes := htmlNodes()
+	assertNodes(t,
+		Set{nodes.Doc}.First(ByTag(atom.Div)),
+		nodes.Div)
+	assertNodes(t,
+		Set{nodes.DivUl}.First(),
+		nodes.DivUlLi1)
+	assertNodes(t,
+		Set{nodes.SpanDivDiv}.First())
+}
+
+func TestNext(t *testing.T) {
+	nodes := htmlNodes()
+	assertNodes(t,
+		Set{nodes.DivUlLi1}.Next(),
+		nodes.DivUlLi2)
+	assertNodes(t,
+		Set{nodes.DivUlLi2}.Next())
+}
+
+func TestPrev(t *testing.T) {
+	nodes := htmlNodes()
+	assertNodes(t,
+		Set{nodes.DivUlLi2}.Prev(),
+		nodes.DivUlLi1)
+	assertNodes(t,
+		Set{nodes.DivUlLi1}.Prev())
+}
+
+func TestFilter(t *testing.T) {
+	nodes := htmlNodes()
+	set := Set{
+		nodes.Span,
+		nodes.SpanText1,
+		nodes.SpanDiv,
+		nodes.SpanDivText1,
+		nodes.SpanDivDiv,
+		nodes.SpanDivDivText1,
+		nodes.SpanDivText2,
+		nodes.SpanText2,
 	}
 
-	set = set.Prev()
-	if set.Text() != "First value" {
-		t.Errorf("Expected \"First value\" but found \"%s\"", set.Text())
-	}
+	assertNodes(t,
+		set.Filter(ByTag(atom.Div)),
+		nodes.SpanDiv, nodes.SpanDivDiv)
+	assertNodes(t,
+		set.Filter(ByTag(atom.H1)))
+	assertNodes(t,
+		set.Filter(ById("divId")),
+		nodes.SpanDiv)
+	assertNodes(t,
+		set.Filter(ById("divId")),
+		nodes.SpanDiv)
+	assertNodes(t,
+		set.Filter(ByAttr("title", "text")),
+		nodes.SpanDivDiv)
+	assertNodes(t,
+		set.Filter(ByClass("foo")),
+		nodes.Span, nodes.SpanDiv)
+	assertNodes(t,
+		set.Filter(ByClass("moo")),
+		nodes.SpanDiv)
+	assertNodes(t,
+		set.Filter(ByType(html.TextNode)),
+		nodes.SpanText1, nodes.SpanDivText1, nodes.SpanDivDivText1, nodes.SpanDivText2, nodes.SpanText2)
 }
 
 func traverse(ch chan *html.Node, n *html.Node) {
@@ -225,5 +288,11 @@ func assertNodes(t *testing.T, set Set, nodes ...*html.Node) {
 			t.Errorf("Expected node %d to be %s but found %s", i, nodeString(n), nodeString(set[i]))
 			return
 		}
+	}
+}
+
+func assertString(t *testing.T, str, exp string) {
+	if str != exp {
+		t.Errorf("Expected %#v but found %#v", exp, str)
 	}
 }
