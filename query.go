@@ -53,6 +53,38 @@ func (s Set) Children(selectors ...Selector) Set {
 	return matched
 }
 
+// FirstChild gets the first child ElementNode of each element in the Set that matches the optional Selectors.
+func (s Set) FirstChild(selectors ...Selector) Set {
+	matched := make(Set, 0, len(s))
+
+	for _, node := range s {
+		for c := node.FirstChild; c != nil; c = c.NextSibling {
+			if c.Type == html.ElementNode && match(c, selectors) {
+				matched = append(matched, c)
+				break
+			}
+		}
+	}
+
+	return matched
+}
+
+// LastChild gets the last child ElementNode of each element in the Set that matches the optional Selectors.
+func (s Set) LastChild(selectors ...Selector) Set {
+	matched := make(Set, 0, len(s))
+
+	for _, node := range s {
+		for c := node.LastChild; c != nil; c = c.PrevSibling {
+			if c.Type == html.ElementNode && match(c, selectors) {
+				matched = append(matched, c)
+				break
+			}
+		}
+	}
+
+	return matched
+}
+
 // Contents gets the children of each element in the Set, including TextNodes, CommentNodes, and DoctypeNodes, filtered by Selectors.
 func (s Set) Contents(selectors ...Selector) Set {
 	var matched Set

@@ -167,6 +167,26 @@ func TestPrev(t *testing.T) {
 		Set{nodes.DivUlLi1}.Prev())
 }
 
+func TestFirstChild(t *testing.T) {
+	nodes := htmlNodes()
+	assertNodes(t,
+		Set{nodes.Body, nodes.DivUl}.FirstChild(),
+		nodes.Div, nodes.DivUlLi1)
+	assertNodes(t,
+		Set{nodes.Body, nodes.DivUlLi2}.FirstChild(),
+		nodes.Div)
+}
+
+func TestLastChild(t *testing.T) {
+	nodes := htmlNodes()
+	assertNodes(t,
+		Set{nodes.Body, nodes.DivUl}.LastChild(),
+		nodes.Span, nodes.DivUlLi2)
+	assertNodes(t,
+		Set{nodes.Body, nodes.DivUlLi2}.LastChild(),
+		nodes.Span)
+}
+
 func TestFilter(t *testing.T) {
 	nodes := htmlNodes()
 	set := Set{
